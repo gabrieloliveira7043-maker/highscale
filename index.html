@@ -661,8 +661,8 @@ function switchChartType(t) {
   buildChart();
 }
 
-async function loadDailyData(account, token, from, to) {
-  const url = `https://graph.facebook.com/v19.0/${account}/insights?fields=spend,reach,actions&time_range={"since":"${from}","until":"${to}"}&time_increment=1&access_token=${token}`;
+async function loadDailyData(account, from, to) {
+  const url = `${WORKER_URL}?account=${account}&from=${from}&to=${to}&fields=spend,reach,actions&time_increment=1`;
   try {
     const res = await fetch(url);
     const json = await res.json();
@@ -673,9 +673,9 @@ async function loadDailyData(account, token, from, to) {
 
 
 const CREDENTIALS = {
-  "admin":    { pass: "highscale@2024",  act: null },
-  "daiane":   { pass: "daiane123",       act: "act_819138866053000" },
-  "creche":   { pass: "creche123",       act: "act_1621125609028254" },
+  "admin":    { pass: null,  act: null },
+  "daiane":   { pass: null,       act: "act_819138866053000" },
+  "creche":   { pass: null,       act: "act_1621125609028254" },
 };
 
 const CLIENT_NAMES = {
@@ -697,7 +697,7 @@ function doLogin() {
   const accountId = cred.act;
   const clientName = CLIENT_NAMES[accountId] || user;
   if (accountId) {
-    activeClient = { name: clientName, account: accountId, token: FIXED_TOKEN };
+    activeClient = { name: clientName, account: accountId };
     document.getElementById('page-title').textContent = clientName;
     document.getElementById('page-meta').textContent = accountId;
   } else {
@@ -1277,7 +1277,7 @@ function restoreSession() {
   const clientName = accountId ? (CLIENT_NAMES[accountId] || user) : 'Admin';
 
   if (accountId) {
-    activeClient = { name: clientName, account: accountId, token: FIXED_TOKEN };
+    activeClient = { name: clientName, account: accountId };
     document.getElementById('page-title').textContent = clientName;
     document.getElementById('page-meta').textContent = accountId;
   } else {
@@ -1402,7 +1402,7 @@ function onCrmClientChange() {
     if (title) title.textContent = name;
     if (subtitle) subtitle.textContent = 'CRM de leads';
     // Sync sidebar
-    activeClient = { name, account: act, token: FIXED_TOKEN };
+    activeClient = { name, account: act };
     renderSidebar();
   }
   renderKanban();
@@ -1513,7 +1513,7 @@ function restoreSession() {
   const clientName = accountId ? (CLIENT_NAMES[accountId] || user) : 'Admin';
 
   if (accountId) {
-    activeClient = { name: clientName, account: accountId, token: FIXED_TOKEN };
+    activeClient = { name: clientName, account: accountId };
     document.getElementById('page-title').textContent = clientName;
     document.getElementById('page-meta').textContent = accountId;
   } else {
@@ -1638,7 +1638,7 @@ function onCrmClientChange() {
     if (title) title.textContent = name;
     if (subtitle) subtitle.textContent = 'CRM de leads';
     // Sync sidebar
-    activeClient = { name, account: act, token: FIXED_TOKEN };
+    activeClient = { name, account: act };
     renderSidebar();
   }
   renderKanban();
@@ -2134,7 +2134,7 @@ function renderSidebar() {
 
 function selectClientByAct(act) {
   const name = CLIENT_NAMES[act] || act;
-  activeClient = { name, account: act, token: FIXED_TOKEN };
+  activeClient = { name, account: act };
   document.getElementById('page-title').textContent = name;
   document.getElementById('page-meta').textContent = act;
   document.getElementById('welcome-state').style.display = 'none';
@@ -2193,10 +2193,10 @@ async function loadData() {
   document.getElementById('data-area').style.display = 'none';
   document.getElementById('page-meta').textContent = `${from} → ${to}`;
 
-  const token = activeClient.token || FIXED_TOKEN;
+  
   const account = activeClient.account;
-  const insightsUrl = `https://graph.facebook.com/v19.0/${account}/insights?fields=spend,reach,impressions,cpm,ctr,frequency,actions,campaign_name,campaign_id&time_range={"since":"${from}","until":"${to}"}&level=campaign&access_token=${token}`;
-  const campaignsUrl = `https://graph.facebook.com/v19.0/${account}/campaigns?fields=id,effective_status&limit=200&access_token=${token}`;
+  const insightsUrl = `${WORKER_URL}?account=${account}&from=${from}&to=${to}&fields=spend,reach,impressions,cpm,ctr,frequency,actions,campaign_name,campaign_id`;
+  const campaignsUrl = `${WORKER_URL}?account=${account}&from=${from}&to=${to}&fields=id,effective_status`;
 
   try {
     const [insRes, campRes] = await Promise.all([fetch(insightsUrl), fetch(campaignsUrl)]);
@@ -2233,7 +2233,7 @@ async function loadData() {
     const cpConv = totalConv ? totalSpend / totalConv : 0;
 
     document.getElementById('data-area').style.display = 'block';
-    dailyData = await loadDailyData(account, token, from, to);
+    dailyData = await loadDailyData(account, from, to);
     buildChart();
     animVal('m-spend', fmtBRL(totalSpend));
     animVal('m-reach', fmtNum(totalReach));
@@ -2270,11 +2270,12 @@ async function loadData() {
 
   } catch(e) {
     showLoading(false);
-    showError('Erro de conexão com a API da Meta. Verifique o token e o Ad Account ID.');
+    showError('Erro de conexão: ' + (e && e.message ? e.message : JSON.stringify(e)));
+    console.error('[loadData error]', e);
   }
 }
 
-const FIXED_TOKEN = "EAAL58zg0HzoBReKLADrMyNrl8fbqC10wtRA5OehrO5d7uqZAQiKNeaZAgSmmh8HTh1ex6mpyFAgRgoFRdJaDdsTJHh9ngENNB0HTpTbqz017cSS2varNrNSXmEYZBOtL55zl4RBEy2avyFqrBVmsLZBpOEjzvwylWNqYezzsZBuaW4ZCKoyygJZCIeZCQ2HNstil";
+const WORKER_URL = "https://meta-proxy.gabrieloliveira7043.workers.dev";
 
 const today = new Date();
 const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -2294,7 +2295,7 @@ if (actFromUrl) {
   };
   const clientName = clientMap[accountId] || accountId;
   if (accountId) {
-    activeClient = { name: clientName, account: accountId, token: FIXED_TOKEN };
+    activeClient = { name: clientName, account: accountId };
     document.getElementById('page-title').textContent = clientName;
     document.getElementById('page-meta').textContent = accountId;
   } else {
@@ -2407,8 +2408,8 @@ function switchChartType(t) {
   buildChart();
 }
 
-async function loadDailyData(account, token, from, to) {
-  const url = `https://graph.facebook.com/v19.0/${account}/insights?fields=spend,reach,actions&time_range={"since":"${from}","until":"${to}"}&time_increment=1&access_token=${token}`;
+async function loadDailyData(account, from, to) {
+  const url = `${WORKER_URL}?account=${account}&from=${from}&to=${to}&fields=spend,reach,actions&time_increment=1`;
   try {
     const res = await fetch(url);
     const json = await res.json();
@@ -2419,9 +2420,9 @@ async function loadDailyData(account, token, from, to) {
 
 
 const CREDENTIALS = {
-  "admin":    { pass: "highscale@2024",  act: null },
-  "daiane":   { pass: "daiane123",       act: "act_819138866053000" },
-  "creche":   { pass: "creche123",       act: "act_1621125609028254" },
+  "admin":    { pass: null,  act: null },
+  "daiane":   { pass: null,       act: "act_819138866053000" },
+  "creche":   { pass: null,       act: "act_1621125609028254" },
 };
 
 const CLIENT_NAMES = {
@@ -2443,7 +2444,7 @@ function doLogin() {
   const accountId = cred.act;
   const clientName = CLIENT_NAMES[accountId] || user;
   if (accountId) {
-    activeClient = { name: clientName, account: accountId, token: FIXED_TOKEN };
+    activeClient = { name: clientName, account: accountId };
     document.getElementById('page-title').textContent = clientName;
     document.getElementById('page-meta').textContent = accountId;
   } else {
@@ -3023,7 +3024,7 @@ function restoreSession() {
   const clientName = accountId ? (CLIENT_NAMES[accountId] || user) : 'Admin';
 
   if (accountId) {
-    activeClient = { name: clientName, account: accountId, token: FIXED_TOKEN };
+    activeClient = { name: clientName, account: accountId };
     document.getElementById('page-title').textContent = clientName;
     document.getElementById('page-meta').textContent = accountId;
   } else {
@@ -3148,7 +3149,7 @@ function onCrmClientChange() {
     if (title) title.textContent = name;
     if (subtitle) subtitle.textContent = 'CRM de leads';
     // Sync sidebar
-    activeClient = { name, account: act, token: FIXED_TOKEN };
+    activeClient = { name, account: act };
     renderSidebar();
   }
   renderKanban();
