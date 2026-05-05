@@ -551,13 +551,21 @@ tr:hover td { background: var(--surface2); }
 
     /* Mobile header */
     .mobile-header {
-      display: flex; align-items: center; justify-content: space-between;
+      display: flex; flex-direction: column; gap: 10px;
       padding: 14px 16px; background: var(--surface);
       border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 5;
     }
+    .mobile-header-top { display: flex; flex-direction: column; gap: 2px; }
     .mobile-header-title { font-size: 16px; font-weight: 600; color: var(--text); }
-    .mobile-header-sub { font-size: 10px; color: var(--muted); font-family: 'JetBrains Mono', monospace; margin-top: 1px; }
-    .mobile-period { font-size: 11px; color: var(--muted2); font-family: 'JetBrains Mono', monospace; }
+    .mobile-header-sub { font-size: 11px; color: var(--muted2); }
+    .mobile-client-select {
+      width: 100%; background: var(--surface2); border: 1px solid var(--border2);
+      border-radius: 8px; color: var(--text); font-size: 14px; font-family: 'Inter', sans-serif;
+      padding: 8px 12px; height: 40px; appearance: none; -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238888aa' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 12px center; cursor: pointer;
+    }
+    .mobile-client-select option { background: var(--surface2); color: var(--text); }
 
     /* Hide desktop topbar */
     .topbar { display: none !important; }
@@ -1501,11 +1509,17 @@ function loadDataMobile() {
 }
 
 function updateMobileHeader() {
+  const nameEl = document.getElementById('mobile-user-name');
+  if (nameEl) {
+    const pt = document.getElementById('page-title');
+    nameEl.textContent = pt ? pt.textContent : (isAdmin ? 'Admin' : '');
+  }
   if (!activeClient) return;
-  const t = document.getElementById('mobile-title');
-  const s = document.getElementById('mobile-sub');
-  if (t) t.textContent = activeClient.name;
-  if (s) s.textContent = activeClient.account;
+  const mSel = document.getElementById('mobile-client-select');
+  if (mSel && activeClient) {
+    const val = isAdmin ? activeClient.account : activeClient.name;
+    if (mSel.querySelector(`option[value="${val}"]`)) mSel.value = val;
+  }
 }
 
 // Sync mobile dates with desktop
@@ -1697,7 +1711,7 @@ function restoreSession() {
   const mobileNav = document.getElementById('mobile-nav');
   if (mobileNav) mobileNav.style.display = 'flex';
   const mobileFilters = document.getElementById('mobile-filters');
-  if (mobileFilters && isAdmin === false) mobileFilters.style.display = 'flex';
+  if (mobileFilters) mobileFilters.style.display = 'flex';
   updateSidebarForUser();
   return true;
 }
@@ -1942,7 +1956,7 @@ function restoreSession() {
   const mobileNav = document.getElementById('mobile-nav');
   if (mobileNav) mobileNav.style.display = 'flex';
   const mobileFilters = document.getElementById('mobile-filters');
-  if (mobileFilters && isAdmin === false) mobileFilters.style.display = 'flex';
+  if (mobileFilters) mobileFilters.style.display = 'flex';
   updateSidebarForUser();
   return true;
 }
@@ -2066,11 +2080,13 @@ function onCrmClientChange() {
 
 <!-- Mobile header -->
 <div class="mobile-header" id="mobile-header" style="display:none;">
-  <div>
-    <div class="mobile-header-title" id="mobile-title">Selecione um cliente</div>
-    <div class="mobile-header-sub" id="mobile-sub">configure a integração</div>
+  <div class="mobile-header-top">
+    <div class="mobile-header-title" id="mobile-user-name">Admin</div>
+    <div class="mobile-header-sub">Selecione um cliente</div>
   </div>
-  <div class="mobile-period" id="mobile-period"></div>
+  <select id="mobile-client-select" class="mobile-client-select" onchange="onMobileClientSelect(this.value)">
+    <option value="">Selecione um cliente</option>
+  </select>
 </div>
 
 <!-- Mobile date filters -->
@@ -2602,6 +2618,7 @@ function selectClient(name) {
 
 function renderSidebar() {
   const list = document.getElementById('client-list');
+  const mSel = document.getElementById('mobile-client-select');
 
   if (IS_CLIENT_LINK) {
     list.innerHTML = activeClient ? `<div class="client-item active"><div class="client-avatar">${initials(activeClient.name)}</div><span>${activeClient.name}</span></div>` : '';
@@ -2614,6 +2631,12 @@ function renderSidebar() {
         <div class="client-avatar">${initials(name)}</div>
         <span>${name}</span>
       </div>`).join('');
+    if (mSel) {
+      mSel.innerHTML = '<option value="">Selecione um cliente</option>' +
+        Object.entries(CLIENT_NAMES).map(([act, name]) =>
+          `<option value="${act}" ${activeClient && activeClient.account === act ? 'selected' : ''}>${name}</option>`
+        ).join('');
+    }
     return;
   }
 
@@ -2624,6 +2647,12 @@ function renderSidebar() {
       <div class="client-avatar">${initials(cl.name)}</div>
       <span>${cl.name}</span>
     </div>`).join('');
+  if (mSel) {
+    mSel.innerHTML = '<option value="">Selecione um cliente</option>' +
+      clients.map(cl =>
+        `<option value="${cl.name.replace(/"/g,'&quot;')}" ${activeClient && activeClient.name === cl.name ? 'selected' : ''}>${cl.name}</option>`
+      ).join('');
+  }
 }
 
 function selectClientByAct(act) {
@@ -2647,6 +2676,15 @@ function selectClientByAct(act) {
   if (contView && contView.style.display !== 'none') renderContatos();
 }
 
+function onMobileClientSelect(val) {
+  if (!val) return;
+  if (isAdmin) {
+    selectClientByAct(val);
+  } else {
+    selectClient(val);
+  }
+  loadData();
+}
 
 function renderSavedList() {
   const clients = getClients();
@@ -3833,11 +3871,17 @@ function loadDataMobile() {
 }
 
 function updateMobileHeader() {
+  const nameEl = document.getElementById('mobile-user-name');
+  if (nameEl) {
+    const pt = document.getElementById('page-title');
+    nameEl.textContent = pt ? pt.textContent : (isAdmin ? 'Admin' : '');
+  }
   if (!activeClient) return;
-  const t = document.getElementById('mobile-title');
-  const s = document.getElementById('mobile-sub');
-  if (t) t.textContent = activeClient.name;
-  if (s) s.textContent = activeClient.account;
+  const mSel = document.getElementById('mobile-client-select');
+  if (mSel && activeClient) {
+    const val = isAdmin ? activeClient.account : activeClient.name;
+    if (mSel.querySelector(`option[value="${val}"]`)) mSel.value = val;
+  }
 }
 
 // Sync mobile dates with desktop
@@ -4029,7 +4073,7 @@ function restoreSession() {
   const mobileNav = document.getElementById('mobile-nav');
   if (mobileNav) mobileNav.style.display = 'flex';
   const mobileFilters = document.getElementById('mobile-filters');
-  if (mobileFilters && isAdmin === false) mobileFilters.style.display = 'flex';
+  if (mobileFilters) mobileFilters.style.display = 'flex';
   updateSidebarForUser();
   return true;
 }
