@@ -1,4 +1,4 @@
-const CACHE_NAME = 'highscale-v1';
+const CACHE_NAME = 'highscale-v2';
 const ASSETS = [
   '/highscale/',
   '/highscale/index.html',
