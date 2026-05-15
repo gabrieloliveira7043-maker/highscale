@@ -722,8 +722,7 @@ const CREDENTIALS = {
 const CLIENT_NAMES = {
   "act_819138866053000":   "Daiane Silva",
   "act_1621125609028254":  "Creche Milionária",
-    "act_1420557019802873": "Guilherme Carvalho",
-  "act_1420557019802873": "Guilherme Carvalho",
+  "act_1420557019802873":  "Guilherme Carvalho",
 };
 
 function initials(name) {
@@ -2076,6 +2075,10 @@ function onCrmClientChange() {
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
     CRM
   </div>
+  <div class="mobile-nav-item" id="mnav-jornada" onclick="if(window.abrirJornada) abrirJornada(); setMobileNav('jornada')">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+    Jornada
+  </div>
   <div class="mobile-nav-item" id="mnav-conta" onclick="switchView('conta'); setMobileNav('conta')">
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
     Conta
@@ -3002,8 +3005,7 @@ const CREDENTIALS = {
 const CLIENT_NAMES = {
   "act_819138866053000":   "Daiane Silva",
   "act_1621125609028254":  "Creche Milionária",
-    "act_1420557019802873": "Guilherme Carvalho",
-  "act_1420557019802873": "Guilherme Carvalho",
+  "act_1420557019802873":  "Guilherme Carvalho",
 };
 
 function abrirWhatsAppPopup() {
@@ -3169,6 +3171,7 @@ async function renderAdminJornadaPanel() {
 
 function renderJornadaSteps(act, stepData) {
   const container = document.getElementById('jornada-steps');
+  if (!container) return;
   const total = JORNADA_STEPS.length;
   const doneCount = JORNADA_STEPS.filter(s => stepData[s.id] && stepData[s.id].done).length;
 
@@ -3180,43 +3183,70 @@ function renderJornadaSteps(act, stepData) {
     const data = stepData[step.id] || {};
     const done = !!data.done;
     const customLink = data.link || null;
-    const customLinkLabel = data.link_label || 'Acessar';
+    const customLinkLabel = data.link_label || 'Assistir gravação';
+    const customLink2 = data.link2 || null;
+    const customLink2Label = data.link2_label || 'Ler resumo';
     const fixedLink = step.fixedLink;
     const fixedLinkLabel = step.fixedLinkLabel;
+    const isHWD = step.id.startsWith('hwd_') || step.id === 'plano_acao';
 
-    const cardBg = done ? '#E1F5EE' : 'var(--surface)';
-    const cardBorder = done ? '#0F6E56' : 'var(--border)';
-    const numBg = done ? '#1D9E75' : 'var(--surface2)';
+    const cardBg = done ? '#E6F1FB' : 'var(--surface)';
+    const cardBorder = done ? '#185FA5' : 'var(--border)';
+    const stepNumColor = done ? '#0C447C' : '#185FA5';
+    const titleColor = done ? '#042C53' : 'var(--text)';
+    const numBg = done ? '#185FA5' : 'transparent';
+    const numBorder = done ? '#185FA5' : 'var(--border2)';
     const numColor = done ? '#fff' : 'var(--muted)';
-    const numContent = done ? '✓' : (i+1);
-    const labelColor = done ? '#0F6E56' : 'var(--text)';
 
-    const fixedLinkHtml = fixedLink ? `
-      <a href="${fixedLink}" target="_blank" style="display:inline-flex;align-items:center;gap:4px;margin-top:6px;font-size:11px;color:#1D9E75;text-decoration:none;font-weight:500;">↗ ${fixedLinkLabel}</a>` : '';
+    const stepLabel = String(i+1).padStart(2,'0');
 
-    const customLinkHtml = customLink ? `
-      <a href="${customLink}" target="_blank" style="display:inline-flex;align-items:center;gap:4px;margin-top:4px;font-size:11px;color:var(--accent2);text-decoration:none;font-weight:500;">↗ ${customLinkLabel}</a>` : '';
+    // Botão fixo (plataforma, wa, calendário)
+    const fixedBtn = fixedLink ? (() => {
+      let btnBg = '#0C447C', btnColor = '#E6F1FB', icon = '↗';
+      if (fixedLink.includes('whatsapp')) { btnBg = '#0F6E56'; btnColor = '#E1F5EE'; icon = '↗'; }
+      if (fixedLink.includes('calendar')) { btnBg = '#3C3489'; btnColor = '#EEEDFE'; icon = '↗'; }
+      return `<a href="${fixedLink}" target="_blank" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:50px;background:${btnBg};color:${btnColor};font-size:12px;font-weight:500;text-decoration:none;margin-top:12px;">${icon} ${fixedLinkLabel}</a>`;
+    })() : '';
 
-    const adminLinkBtn = isAdmin ? `
-      <button onclick="openJornadaLinkModal('${step.id}','${act}')" style="display:block;width:100%;margin-top:8px;padding:4px 0;font-size:10px;color:var(--muted);background:none;border:1px dashed var(--border);border-radius:6px;cursor:pointer;font-family:inherit;">
+    // Botão gravação (admin adiciona)
+    const customBtn = customLink ? `<a href="${customLink}" target="_blank" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:50px;background:#0C447C;color:#E6F1FB;font-size:12px;font-weight:500;text-decoration:none;margin-top:12px;">▶ ${customLinkLabel}</a>` : '';
+
+    // Botão resumo (admin adiciona)
+    const custom2Btn = customLink2 ? `<a href="${customLink2}" target="_blank" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:50px;background:#534AB7;color:#EEEDFE;font-size:12px;font-weight:500;text-decoration:none;margin-top:6px;">☰ ${customLink2Label}</a>` : '';
+
+    // Botões admin para adicionar links
+    const adminBtns = isAdmin && isHWD ? `
+      <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;">
+        <button onclick="openJornadaLinkModal('${step.id}','${act}','link','${customLink||''}')" style="flex:1;padding:5px 8px;font-size:10px;color:var(--muted);background:none;border:1px dashed var(--border);border-radius:6px;cursor:pointer;font-family:inherit;white-space:nowrap;">
+          ${customLink ? '✎ Gravação' : '+ Gravação'}
+        </button>
+        <button onclick="openJornadaLinkModal('${step.id}','${act}','link2','${customLink2||''}')" style="flex:1;padding:5px 8px;font-size:10px;color:var(--muted);background:none;border:1px dashed var(--border);border-radius:6px;cursor:pointer;font-family:inherit;white-space:nowrap;">
+          ${customLink2 ? '✎ Resumo' : '+ Resumo'}
+        </button>
+      </div>` : isAdmin && !isHWD && !fixedLink ? `
+      <button onclick="openJornadaLinkModal('${step.id}','${act}','link','${customLink||''}')" style="display:block;width:100%;margin-top:10px;padding:5px 0;font-size:10px;color:var(--muted);background:none;border:1px dashed var(--border);border-radius:6px;cursor:pointer;font-family:inherit;">
         ${customLink ? '✎ Editar link' : '+ Adicionar link'}
       </button>` : '';
 
-    const connector = i < JORNADA_STEPS.length-1 ? `<div style="display:flex;align-items:center;padding-top:16px;flex-shrink:0;"><div style="width:20px;height:1px;background:var(--border);"></div></div>` : '';
+    const checkLabel = done ? 'Concluída' : 'Marcar como concluída';
+    const checkIcon = done ? '✓ ' : '';
 
-    return `
-      <div style="display:inline-flex;flex-direction:column;align-items:stretch;gap:0;">
-        <div style="width:140px;flex-shrink:0;border-radius:12px;border:1px solid ${cardBorder};background:${cardBg};padding:14px 12px;text-align:center;transition:all 0.2s;">
-          <div onclick="toggleJornadaStep('${step.id}','${act}')" style="cursor:pointer;">
-            <div style="width:32px;height:32px;border-radius:50%;background:${numBg};display:flex;align-items:center;justify-content:center;margin:0 auto 10px;font-size:13px;font-weight:500;color:${numColor};">${numContent}</div>
-            <div style="font-size:12px;color:${labelColor};line-height:1.4;font-weight:500;">${step.label}</div>
-          </div>
-          ${fixedLinkHtml}
-          ${customLinkHtml}
-          ${adminLinkBtn}
-        </div>
+    return `<div style="background:${cardBg};border:0.5px solid ${cardBorder};border-radius:14px;padding:22px 24px;margin-bottom:12px;transition:all 0.2s;">
+      <div style="font-size:11px;font-weight:500;color:${stepNumColor};text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">Etapa ${stepLabel}</div>
+      <div style="display:flex;align-items:center;gap:14px;">
+        <div style="width:40px;height:40px;border-radius:50%;border:1.5px solid ${numBorder};background:${numBg};display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:500;color:${numColor};flex-shrink:0;">${done ? '✓' : (i+1)}</div>
+        <div style="font-size:16px;font-weight:500;color:${titleColor};line-height:1.3;">${step.label}</div>
       </div>
-      ${connector}`;
+      <div style="display:flex;flex-direction:column;align-items:flex-start;gap:0;">
+        ${fixedBtn}${customBtn}${custom2Btn}${adminBtns}
+      </div>
+      <div onclick="toggleJornadaStep('${step.id}','${act}')" style="display:inline-flex;align-items:center;gap:8px;margin-top:16px;cursor:pointer;">
+        <div style="width:20px;height:20px;border-radius:6px;border:1.5px solid ${done?'#185FA5':'var(--border2)'};background:${done?'#185FA5':'transparent'};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          ${done ? '<span style="color:#fff;font-size:12px;">✓</span>' : ''}
+        </div>
+        <span style="font-size:13px;color:${done?'#0C447C':'var(--muted)'};">${checkIcon}${checkLabel}</span>
+      </div>
+    </div>`;
   }).join('');
 }
 
@@ -3233,11 +3263,13 @@ async function toggleJornadaStep(stepId, act) {
   } catch(e) { alert('Erro ao salvar: ' + e.message); }
 }
 
-function openJornadaLinkModal(stepId, act) {
+function openJornadaLinkModal(stepId, act, field, currentVal) {
+  field = field || 'link';
   const stepData = _jornadaCache || {};
   const current = stepData[stepId] || {};
-  const currentLink = current.link || '';
-  const currentLabel = current.link_label || '';
+  const currentLink = currentVal || current[field] || '';
+  const defaultLabel = field === 'link2' ? 'Ler resumo' : 'Assistir gravação';
+  const currentLabel = current[field+'_label'] || defaultLabel;
   const step = JORNADA_STEPS.find(s => s.id === stepId);
 
   const existing = document.getElementById('jornada-link-modal');
@@ -3264,12 +3296,13 @@ function openJornadaLinkModal(stepId, act) {
   modal.addEventListener('click', e => { if(e.target === modal) modal.remove(); });
 }
 
-async function saveJornadaLink(stepId, act, remove) {
+async function saveJornadaLink(stepId, act, remove, field) {
+  field = field || 'link';
   const url = remove ? '' : document.getElementById('jl-url').value.trim();
   const label = remove ? '' : document.getElementById('jl-label').value.trim();
   const stepData = _jornadaCache || {};
   const current = stepData[stepId] || {};
-  const newData = { ...current, link: url, link_label: label };
+  const newData = { ...current, [field]: url, [field+'_label']: label };
   try {
     await window._fb.saveJornadaStep(act, stepId, newData);
     _jornadaCache = { ..._jornadaCache, [stepId]: newData };
